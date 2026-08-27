@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CuGoMEGA M2 - VR Joystick Control</title>
+<style>
+  body {
+    background: #111;
+    color: #eee;
+    font-family: system-ui, sans-serif;
+    text-align: center;
+    padding-top: 4em;
+  }
+  button {
+    font-size: 1.5em;
+    padding: 0.6em 1.4em;
+    border-radius: 8px;
+    border: none;
+    background: #2e8b57;
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled { background: #555; }
+  #status {
+    margin-top: 2em;
+    font-size: 1.1em;
+    white-space: pre-line;
+    max-width: 30em;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .ok  { color: #6f6; }
+  .bad { color: #f66; }
+</style>
+</head>
+<body>
+  <h1>M2 VR Joystick Control</h1>
+  <button id="enterVR">Enter VR</button>
+  <div id="status">Not connected yet.</div>
+
+<script>
+const WS_PORT = 8765;
+const statusEl = document.getElementById('status');
+const enterBtn = document.getElementById('enterVR');
+
+let ws = null;
+let lastSend = 0;
+const SEND_INTERVAL_MS = 50; // ~20Hz - plenty for a ground robot
+
+function log(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = cls || '';
+}
+
+function connectWS() {
+  const host = window.location.hostname;
+  ws = new WebSocket(`wss://${host}:${WS_PORT}`);
+  ws.onopen = () => log('WebSocket connected. Tap Enter VR to start driving.', 'ok');
+  ws.onclose = () => log('WebSocket disconnected.', 'bad');
+  ws.onerror = () => log('WebSocket error - is the server running and the cert trusted?', 'bad');
+}
+
+function sendCommand(x, y) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ x, y }));
+  }
+}
+
+async function enterVR() {
+  if (!navigator.xr) {
+    log('WebXR not available. Make sure this page is loaded over HTTPS in the Quest Browser.', 'bad');
+    return;
+  }
+  const supported = await navigator.xr.isSessionSupported('immersive-vr');
+  if (!supported) {
+    log('immersive-vr is not supported on this device/browser.', 'bad');
+    return;
+  }
+
+  const session = await navigator.xr.requestSession('immersive-vr');
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl', { xrCompatible: true });
+  await gl.makeXRCompatible();
+  session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+  await session.requestReferenceSpace('local');
+
+  session.addEventListener('end', () => {
+    log('VR session ended - stopping.', 'bad');
+    sendCommand(0, 0);
+  });
+
+  session.requestAnimationFrame(function onFrame(time, frame) {
+    session.requestAnimationFrame(onFrame);
+
+    let x = 0, y = 0;
+    for (const src of frame.session.inputSources) {
+      if (src.handedness === 'right' && src.gamepad) {
+        const axes = src.gamepad.axes;
+        // Touch controllers typically report the thumbstick as axes[2] (X)
+        // and axes[3] (Y), with axes[0]/[1] unused/zero. If your readings
+        // look wrong, open the browser console (remote-debug the Quest via
+        // USB + chrome://inspect on a PC) and log `axes` to see the real
+        // indices on your device.
+        x = axes.length >= 4 ? axes[2] : (axes[0] || 0);
+        y = axes.length >= 4 ? axes[3] : (axes[1] || 0);
+      }
+    }
+
+    const now = performance.now();
+    if (now - lastSend > SEND_INTERVAL_MS) {
+      sendCommand(x, y);
+      lastSend = now;
+    }
+  });
+
+  log('VR session active.\nMove the right thumbstick to drive.\nCenter it to stop.', 'ok');
+}
+
+enterBtn.addEventListener('click', async () => {
+  connectWS();
+  await enterVR();
+});
+</script>
+</body>
+</html>
