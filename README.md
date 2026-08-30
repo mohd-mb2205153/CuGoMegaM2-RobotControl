@@ -129,19 +129,3 @@ The driver speaks ASCII over **115200 8N1**, commands terminated with `\r`. It r
 | `?S` | Read encoder speed in RPM |
 
 **Channel mapping.** On this robot, channel 1 is the **left** motor **inverted** and channel 2 is the **right** motor. Driving straight forward sends `!M -600 600`. This is the opposite of the assembly manual's diagram plus a polarity flip, most likely because the two crawler units are mirrored. Verify on your own machine before trusting it — the signs are exposed as `CH1_SIGN` / `CH2_SIGN` at the top of the server.
-
-## Troubleshooting
-
-**`Permission denied` on the serial port** — not in the `dialout` group, or added but not yet rebooted.
-
-**Empty reply to every command** — nothing is coming back over RS232. Check the adapter is genuine RS232, that the M2 is powered with the emergency stop released, and that Priority 1 is set to RS232.
-
-**`-` replies** — the driver received the command but rejected it. Check the value range and command syntax.
-
-**Quest browser refuses to enter VR** — WebXR requires HTTPS. Confirm you used `https://` and accepted the certificate warning.
-
-**Certificate warning won't go away / connection refused** — the certificate was generated for a different IP than the machine currently has.
-
-**Service shows `inactive (dead)` after boot** — the `[Install]` section is missing or malformed, so no boot symlink was created. Verify with `ls -l /etc/systemd/system/multi-user.target.wants/ | grep m2`.
-
-**Service restart-loops with `status=1`** — read the traceback with `journalctl -u m2-teleop.service -n 50`. Usually a wrong `WorkingDirectory` (certificate not found) or a serial permission problem.
