@@ -1,0 +1,16 @@
+[Unit]
+Description=CuGoMEGA M2 VR Teleop Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=abeer
+WorkingDirectory=/home/abeer/Downloads/CuGoMegaM2-RobotControl-main
+ExecStart=/usr/bin/python3 /home/abeer/Downloads/CuGoMegaM2-RobotControl-main/vr_teleop_server.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
