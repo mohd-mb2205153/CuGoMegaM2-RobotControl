@@ -22,10 +22,10 @@ SETUP:
   2. python generate_cert.py <your-pc-lan-ip>
        -> creates cert.pem / key.pem in this folder
   3. Set SERIAL_PORT below.
-  4. Make sure webxr_joystick.html is in this same folder.
+  4. Make sure webxr.html is in this same folder.
   5. Run: python vr_teleop_server.py
   6. On the Quest 3, same WiFi network, browser to
-     https://<your-pc-lan-ip>:8443/webxr_joystick.html
+     https://<your-pc-lan-ip>:8443/webxr.html
      Accept the self-signed cert warning (Advanced -> Proceed).
   7. Tap "Enter VR" and move the right thumbstick. Center it to stop.
 
@@ -50,7 +50,21 @@ import http.server
 import serial
 import websockets
 
-SERIAL_PORT = "COM6"
+
+# --- Compatibility shim -------------------------------------------------
+# asyncio.to_thread() only exists on Python 3.9+. Jetson boards commonly
+# ship Python 3.8 (JetPack 5.x / Ubuntu 20.04) or even 3.6 (JetPack 4.x),
+# where this would crash with AttributeError. run_in_executor is the
+# older equivalent and behaves the same for our purposes.
+if hasattr(asyncio, "to_thread"):
+    _to_thread = asyncio.to_thread
+else:
+    async def _to_thread(func, *args):
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, func, *args)
+# ------------------------------------------------------------------------
+
+SERIAL_PORT = "/dev/ttyUSB0"   # Linux (Pi/Jetson); "COM6" etc. on Windows
 BAUD_RATE = 115200
 MAX_SPEED = 600              # keep below the 1000 max for headroom
 DEADZONE = 0.12              # ignore small stick drift around center
@@ -167,7 +181,7 @@ async def control_loop(driver: M2Driver, state: ControlState):
         # Always resend zeros at least once after motion, then idle quietly
         # rather than spamming the port when nothing is happening.
         if (left, right) != (0, 0) or last_sent != (0, 0):
-            await asyncio.to_thread(driver.drive, left, right)
+            await _to_thread(driver.drive, left, right)
             last_sent = (left, right)
         await asyncio.sleep(period)
 
@@ -210,7 +224,9 @@ async def main():
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_ctx.load_cert_chain(CERT_FILE, KEY_FILE)
 
-    async def handler(ws):
+    # websockets < 10 calls the handler as (ws, path); >= 10 calls it as
+    # (ws) only. Accepting an optional second argument works with both.
+    async def handler(ws, path=None):
         await ws_handler(ws, state)
 
     async with websockets.serve(handler, "0.0.0.0", WSS_PORT, ssl=ssl_ctx):

@@ -13,7 +13,7 @@ Quest 3  ──WiFi/WSS──►  Raspberry Pi  ──RS232──►  Keya KYDBL
 | File | Purpose |
 |---|---|
 | `vr_teleop_server.py` | Main server — HTTPS page, WebSocket, serial control loop |
-| `webxr_joystick.html` | WebXR page loaded by the Quest browser |
+| `webxr.html` | WebXR page loaded by the Quest browser |
 | `generate_cert.py` | Creates the self-signed certificate WebXR requires |
 | `m2_local_test.py` | Keyboard driving test, no headset needed |
 | `m2-teleop.service` | systemd unit for starting the server on boot |
@@ -81,7 +81,7 @@ python3 vr_teleop_server.py
 On the Quest 3, joined to the same network, open:
 
 ```
-https://192.168.1.201:8443/webxr_joystick.html
+https://192.168.1.201:8443/webxr.html
 ```
 
 Accept the "not private" warning — expected for a self-signed certificate — then tap **Enter VR**. The right thumbstick drives; centering it stops.
