@@ -2,6 +2,14 @@
 
 Control a CuboRex CuGoMEGA M2 tracked robot from a Meta Quest 3 controller, over WiFi, without the supplied RC transmitter.
 
+- 🥽 **Runs in the Quest browser.** A plain WebXR page, so there's no app store, sideloading, or build step.
+- 📡 **Wireless.** Joystick input streams over WiFi to a Raspberry Pi, which drives the motors over RS232.
+- 🔌 **Replaces the RC transmitter.** It talks directly to the robot's Keya motor driver.
+- 🧪 **Easy to verify.** A keyboard test script checks the serial link before you put the headset on.
+- 🚀 **Ready to deploy.** It includes a systemd service, so the robot is ready as soon as the Pi boots.
+- 📝 **Documented quirks.** Channel mapping and polarity are worked out and easy to adjust.
+
+
 A Raspberry Pi (or any Linux/Windows machine) connects to the robot's motor driver over RS232 and serves a WebXR page. The Quest opens that page in its browser, reads the right thumbstick, and streams joystick values back over a WebSocket. The server mixes them into left/right track speeds and sends them to the driver.
 
 ```
